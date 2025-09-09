@@ -1,0 +1,174 @@
+openapi: 3.0.3
+info:
+  title: Parenting Platform Auth API
+  description: 보호자·파트너·어드민이 공존하는 육아 플랫폼 (B2C) 의 통합 인증/인가 설계 및 핵심 API 구현
+  version: 0.1.0
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /auth/signup:
+    post:
+      tags: [Auth]
+      summary: 회원가입
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '201':
+          description: 생성됨
+        '400':
+          description: 잘못된 요청
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: 로그인(이메일/비밀번호 + MFA)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                mfaCode:
+                  type: string
+                  description: 계정에서 MFA가 활성화된 경우 TOTP 코드
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+        '400':
+          description: 잘못된 요청
+        '401':
+          description: 인증 실패
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: 리프레시 토큰 로테이션
+      description: |
+        리프레시 토큰을 아래 중 하나로 전달합니다:
+        - 헤더 `X-Refresh-Token`
+        - `Authorization: Bearer <refreshToken>`
+        - 쿠키 `refreshToken`
+      responses:
+        '204':
+          description: 성공(내용 없음)
+        '401':
+          description: 인증 실패
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: 로그아웃(토큰 무효화)
+      responses:
+        '204':
+          description: 성공(내용 없음)
+
+  /auth/mfa/setup:
+    post:
+      tags: [MFA]
+      summary: MFA 설정용 QR 생성
+      description: 계정의 MFA(TOTP) 설정을 생성하고 QR 이미지를 Data URI로 반환합니다.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: QR Data URI 반환
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaSetupResponse'
+        '401':
+          description: 인증 실패
+
+  /me:
+    get:
+      tags: [Me]
+      summary: 현재 사용자 정보 조회
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 사용자 정보
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: 인증 실패
+
+  /me/sessions:
+    get:
+      tags: [Me]
+      summary: 세션 목록 조회(옵션)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 성공
+        '401':
+          description: 인증 실패
+
+components:
+  schemas:
+    UserStatus:
+      type: string
+      description: 사용자 상태
+      enum: [ACTIVE, INACTIVE, LOCKED, DELETED]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+          format: email
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        roles:
+          type: array
+          items:
+            type: string
+
+    MfaSetupResponse:
+      type: object
+      properties:
+        qrDataUri:
+          type: string
+          description: Base64로 인코딩된 QR 이미지(Data URI)
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -1,4 +1,4 @@
-package io.assignment.auth_service;
+package io.assignment.auth;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

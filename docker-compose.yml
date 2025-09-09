@@ -1,0 +1,44 @@
+services:
+  # PostgreSQL 데이터베이스 서비스
+  db:
+    image: postgres:16
+    container_name: auth-db
+    environment:
+      - POSTGRES_DB=authdb
+      - POSTGRES_USER=authuser
+      - POSTGRES_PASSWORD=authpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Redis 서비스
+  redis:
+    image: redis:7
+    container_name: auth-redis
+    ports:
+      - "6379:6379"
+
+  # Spring Boot 애플리케이션 서비스
+  app:
+    build: .
+    container_name: auth-app
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "8080:8080"
+    environment:
+      # DB 연결 정보
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/authdb
+      - SPRING_DATASOURCE_USERNAME=authuser
+      - SPRING_DATASOURCE_PASSWORD=authpassword
+      # Redis 연결 정보
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      # Google OAuth2 정보 (환경변수로 주입)
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+
+volumes:
+  postgres_data:
